@@ -4,19 +4,21 @@
 #include <vector>
 #include <windows.h>
 #include <random>
+#include <cstring>
 using namespace std;
 
 class Player{
     const int id;
     string name;
-    static double noPlayerCreated;
+    static long noPlayerCreated;
     int timesPlayed;
+    long score;
     int* scores;
     float average;
     void copyScores(int timesPlayed, int* scores);
 public:
     Player();
-    Player(string,int,int*,float);
+    Player(string,int,int*,long,float);
     ~Player();
     Player(const Player& obj);
     Player& operator=(const Player& obj);
@@ -24,16 +26,18 @@ public:
     friend std::istream& operator>>(std::istream& in, Player& obj);
     int getID() const;
     string getName() const;
-    double getNoPlayersCreated() const;
+    long getNoPlayersCreated() const;
+    long getScore()const;
     int getTimesPlayed() const;
     const int* getScores() const;
     float getAverage() const;
     void setName(string);
     void setAverage(float);
     void setScores(int*, int);
+    void setScore(long score);
     float calcAverage(int*, int);
 };
-double Player::noPlayerCreated=1;
+long Player::noPlayerCreated=1;
 
 void Player::copyScores(int timesPlayed, int* scores) {
     this->timesPlayed = timesPlayed;
@@ -50,16 +54,19 @@ Player::Player():id(noPlayerCreated++) {
     timesPlayed=0;
     scores=nullptr;
     average=0.0;
+    score=0;
 }
-Player::Player(string name, int timesPlayed, int* scores, float average):id(noPlayerCreated++) {
+Player::Player(string name, int timesPlayed, int* scores,long score, float average):id(noPlayerCreated++) {
     this->name=name;
     copyScores(timesPlayed, scores);
     this->average=average;
+    this->score=score;
 }
 Player::Player(const Player& obj):id(noPlayerCreated++) {
     name=obj.name;
     copyScores(obj.timesPlayed, obj.scores);
     average=obj.average;
+    score=obj.score;
 }
 Player::~Player() {
     delete[] scores;
@@ -68,6 +75,7 @@ Player& Player::operator=(const Player& obj) {
     if (this==&obj) return *this;
     name=obj.name;
     average=obj.average;
+    score=obj.score;
     delete[] scores;
     copyScores(obj.timesPlayed, obj.scores);
     return *this;
@@ -87,10 +95,12 @@ const int* Player::getScores() const {
 int Player::getID() const {
     return id;
 }
-double Player::getNoPlayersCreated() const {
+long Player::getNoPlayersCreated() const {
     return noPlayerCreated;
 }
-
+long Player::getScore()const {
+    return score;
+}
 void Player::setName(string name) {
     this->name=name;
 }
@@ -101,8 +111,11 @@ void Player::setScores(int* scores, int timesPlayed) {
     delete[] this->scores;
     copyScores(timesPlayed, scores);
 }
+void Player::setScore(long score) {
+    this->score=score;
+}
 std::istream& operator>>(std::istream& in, Player& obj) {
-    cout<<"Enter player name: "<<endl;
+    cout<<"First write your name: ";
     string name;
     in>>name;
     obj.setName(name);
@@ -135,12 +148,12 @@ float Player::calcAverage(int* scores, int timesPlayed) {
 }
 class Card {
     const int id;
-    static double noCardsCreated;
+    static long noCardsCreated;
     string symbol;
     string rank;
     char* color;
     bool isFaceUp;
-    const vector<string> order;
+    static vector<string> order;
 public:
     Card();
     Card(string,string,char*, bool);
@@ -156,14 +169,15 @@ public:
     int getIndexOrder() const;
 };
 
-double Card::noCardsCreated=0;
-Card::Card( string symbol,string rank,char* color, bool isFaceUp):id(++noCardsCreated),order({"A","2","3","4","5","6","7","8","9","10","J","Q","K"}){
+long Card::noCardsCreated=0;
+vector<string> Card::order={"A","2","3","4","5","6","7","8","9","10","J","Q","K"};
+Card::Card( string symbol,string rank,char* color, bool isFaceUp):id(++noCardsCreated){
     this->isFaceUp=isFaceUp;
     this->symbol=symbol;
     this->rank=rank;
     this->color=strcpy(new char[strlen(color)+1],color);
 };
-Card::Card():id(++noCardsCreated),order({"A","2","3","4","5","6","7","8","9","10","J","Q","K"}){
+Card::Card():id(++noCardsCreated){
     isFaceUp=false;
     symbol="N/A";
     rank="N/A";
@@ -198,9 +212,8 @@ std::ostream& operator<<(std::ostream& out, const Card& obj){
     else{
         HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
         SetConsoleOutputCP(CP_UTF8);
-        if (obj.getColor()[0]=='R') {
+        if (strcmp(obj.getColor(),"R")==0 ){
             SetConsoleTextAttribute(hConsole, 12);
-            SetConsoleOutputCP(CP_UTF8);
             out<<"( "<<obj.getRank()<<obj.getSymbol()<<" )";
             SetConsoleTextAttribute(hConsole, 7);
         }
@@ -229,6 +242,7 @@ int Card::getIndexOrder() const {
     for (int i=0;i<13;i++) {
         if (order[i]==rank) return i;
     }
+    return -1;
 }
 class Deck {
     int noCards;
@@ -336,53 +350,56 @@ class Game {
     Card** tableau=new Card*[8];
     int* columnSize;
     int* foundationSize;
-    //Player player;
-    Deck initDeck;
-    int noCardsFaceUp;
+    Player player;
+
 public:
     Game();
     ~Game();
     friend std::ostream& operator<<(std::ostream&, const Game&);
-    void goToFoundation();
+    bool moveWasteToFoundation(int);
     bool moveCardToFoundation(int, int);
     bool extractCard();
     void reversePiles();
     bool moveColumnToColumn(int , int ) ;
     bool moveMoreCards(int, int, int);
     bool moveWasteToColumn(int );
-    bool moveFoundationToColumn(int f,int c);
+    bool moveFoundationToColumn(int ,int );
+    void setPlayer(Player) ;
+    bool finish();
+    void reset() ;
 
 };
 Game::Game() {
     Card a;
     Deck deck(52);
-    initDeck=deck;
-    initDeck.shuffleDeck(initDeck);
+    deck.shuffleDeck(deck);
     columnSize=new int[8];
     foundationSize=new int[5];
     for (int i = 1; i <= 7; i++) {
         tableau[i]=new Card[52];
         tableau[i][0]=a;
         for (int j = 1; j <= i; j++) {
-            tableau[i][j]=initDeck.Draw();
+            tableau[i][j]=deck.Draw();
 
             if (j == i) tableau[i][j].setIsFaceUp(true);
         }
         columnSize[i]=i;
     }
-    while (initDeck.isEmpty(initDeck)!=0) {
-        pile.push_back(initDeck.Draw());
+    pile.push_back(a);
+    while (deck.isEmpty(deck)!=0) {
+        pile.push_back(deck.Draw());
     }
     waste.push_back(a);
     for(int i=1;i<=4;i++) {
         foundationSize[i]=0;
-        foundation[i]=new Card[13];
+        foundation[i]=new Card[14];
         foundation[i][0]=a;
     }
-    noCardsFaceUp=7;
+    player.setScore(0);
 };
 
 std::ostream& operator<<(std::ostream& out, const Game& obj) {
+    out<<"Player: "<<obj.player.getName()<<"\t\t"<<"Score: "<<obj.player.getScore()<<endl;
     out<<"Stock\tWaste\tFound.1\tFound.2\tFound.3\tFound.4"<<endl;
     out<<obj.pile.back()<<"\t"<<obj.waste.back()<<"\t";
     for (int i = 1; i <= 4; i++) {
@@ -407,45 +424,49 @@ std::ostream& operator<<(std::ostream& out, const Game& obj) {
     return out;
 }
 Game::~Game() {
+    for (int i=1;i<=4;i++) {
+        delete[] foundation[i];
+    }
     delete[] foundation;
+    for (int i=1;i<=7;i++) {
+        delete[] tableau[i];
+    }
     delete[] tableau;
     delete[] columnSize;
     delete[] foundationSize;
 }
-void Game::goToFoundation() {
-    if (waste.size()>1) {
-        for (int i=1;i<=4;i++) {
-            if (foundationSize[i]>0) {
-                if (waste.back().getSymbol()==foundation[i][foundationSize[i]].getSymbol() &&
-                    waste.back().getIndexOrder()==1+foundation[i][foundationSize[i]].getIndexOrder()) {
-                    foundationSize[i]++;
-                    waste.back().setIsFaceUp(true);
-                    foundation[i][foundationSize[i]]=waste.back();
-                    waste.pop_back();
-                    noCardsFaceUp++;
-                }
-            }
-            else {
-                if (waste.back().getRank()=="A") {
-                    foundationSize[i]++;
-                    waste.back().setIsFaceUp(true);
-                    foundation[i][foundationSize[i]]=waste.back();
-                    waste.pop_back();
-                    noCardsFaceUp++;
-                }
-            }
-        }
-    }
+void Game::setPlayer(Player p) {
+    this->player=p;
 }
-bool Game::moveCardToFoundation(int column, int found) {
-    if ((foundationSize[found]==0 && tableau[column][columnSize[column]].getRank()=="A")||
-        (tableau[column][columnSize[column]].getSymbol()==foundation[found][foundationSize[found]].getSymbol() &&
-            tableau[column][columnSize[column]].getIndexOrder()==1+foundation[found][foundationSize[found]].getIndexOrder())) {
-        foundationSize[found]++;
-        foundation[found][foundationSize[found]]=tableau[column][columnSize[column]];
-        columnSize[column]--;
-        tableau[column][columnSize[column]].setIsFaceUp(true);
-        noCardsFaceUp++;
+
+bool Game::moveWasteToFoundation(int f) {
+    if (f<1 || f>4) return false;
+    if (waste.size()==1) return false;
+    if ((foundationSize[f]>0 && waste.back().getSymbol()==foundation[f][foundationSize[f]].getSymbol() &&
+        waste.back().getIndexOrder()==1+foundation[f][foundationSize[f]].getIndexOrder()) || (foundationSize[f]==0 && waste.back().getRank()=="A")) {
+        foundationSize[f]++;
+        foundation[f][foundationSize[f]]=waste.back();
+        waste.pop_back();
+        player.setScore(player.getScore()+100);
+        return true;
+    }
+    return false;
+}
+
+
+
+bool Game::moveCardToFoundation(int c, int f) {
+    if (c<1 || c>7 || f<1 || f>4) return false;
+    if ((foundationSize[f]==0 && tableau[c][columnSize[c]].getRank()=="A")||
+        (tableau[c][columnSize[c]].getSymbol()==foundation[f][foundationSize[f]].getSymbol() &&
+            tableau[c][columnSize[c]].getIndexOrder()==1+foundation[f][foundationSize[f]].getIndexOrder())) {
+        foundationSize[f]++;
+        foundation[f][foundationSize[f]]=tableau[c][columnSize[c]];
+        columnSize[c]--;
+        if (columnSize[c] > 0) {
+            tableau[c][columnSize[c]].setIsFaceUp(true);
+        }
+        player.setScore(player.getScore()+150);
         return true;
     }
     else return false;
@@ -461,83 +482,299 @@ bool Game::extractCard() {
 }
 void Game::reversePiles() {
     if (pile.size()==1) {
-        for (int i=1;i<waste.size();i++) {
-            waste[i].setIsFaceUp(false);
-            pile.push_back(waste[i]);
+        while (waste.size() > 1) {
+            Card topWaste = waste.back();
+            topWaste.setIsFaceUp(false);
+            pile.push_back(topWaste);
             waste.pop_back();
         }
     }
 }
 bool Game::moveColumnToColumn(int c1, int c2) {
-    if (columnSize[c2]==0 && tableau[c1][columnSize[c1]].getRank()!="K") return false;
-    if (tableau[c1][columnSize[c1]].getColor()!=tableau[c2][columnSize[c2]].getColor() &&
+    if (c1<1 || c1>7 || c2<1 || c2>7) return false;
+    if (columnSize[c2]==0 && tableau[c1][columnSize[c1]].getRank()=="K"){
+        columnSize[c2]++;
+        tableau[c2][columnSize[c2]]=tableau[c1][columnSize[c1]];
+        columnSize[c1]--;
+        if (tableau[c1][columnSize[c1]].getIsFaceUp()==false && columnSize[c1] > 0) {
+            tableau[c1][columnSize[c1]].setIsFaceUp(true);
+        }
+        player.setScore(player.getScore()+50);
+        return true;
+    }
+    if (strcmp(tableau[c1][columnSize[c1]].getColor(),tableau[c2][columnSize[c2]].getColor())!=0 &&
         1+tableau[c1][columnSize[c1]].getIndexOrder() ==tableau[c2][columnSize[c2]].getIndexOrder()) {
         columnSize[c2]++;
         tableau[c2][columnSize[c2]]=tableau[c1][columnSize[c1]];
         columnSize[c1]--;
-        if (tableau[c1][columnSize[c1]].getIsFaceUp()==false) {
+        if (tableau[c1][columnSize[c1]].getIsFaceUp()==false && columnSize[c1] > 0) {
             tableau[c1][columnSize[c1]].setIsFaceUp(true);
-            noCardsFaceUp++;
         }
+        player.setScore(player.getScore()+50);
         return true;
     }
     return false;
 }
 bool Game::moveMoreCards(int c1, int index, int c2) {
-    if (index>columnSize[c1]) return false;
-    if (tableau[c1][index].getColor()!=tableau[c2][columnSize[c2]].getColor() &&
-        tableau[c1][index].getIndexOrder()+1==tableau[c2][columnSize[c2]].getIndexOrder() ) {
+     int multi=columnSize[c1]-index+1;
+    if (c1<1 || c1>7 || c2<1 || c2>7) return false;
+    if (index <= 0 || index > columnSize[c1]) return false;
+    if (tableau[c1][index].getIsFaceUp()==false) return false;
+    if ((columnSize[c2]==0 && tableau[c1][index].getRank()=="K")||(strcmp(tableau[c1][index].getColor(),tableau[c2][columnSize[c2]].getColor())!=0 &&
+        tableau[c1][index].getIndexOrder()+1==tableau[c2][columnSize[c2]].getIndexOrder() )) {
         for (int i=index;i<=columnSize[c1];i++) {
             columnSize[c2]++;
             tableau[c2][columnSize[c2]]=tableau[c1][i];
         }
         columnSize[c1]=columnSize[c1]-(columnSize[c1]-index+1);
-        if (tableau[c1][columnSize[c1]].getIsFaceUp()==false) {
+        if (tableau[c1][columnSize[c1]].getIsFaceUp()==false && columnSize[c1] > 0) {
             tableau[c1][columnSize[c1]].setIsFaceUp(true);
-            noCardsFaceUp++;
         }
+        player.setScore(player.getScore()+multi*90);
         return true;
     }
     return false;
 }
 bool Game::moveWasteToColumn(int c) {
+    if (c<1 || c>7) return false;
     if (waste.size()==1) return false;
-    if (columnSize[c]==0 && waste.back().getRank()!="K") return false;
-    if (waste.back().getColor()!=tableau[c][columnSize[c]].getColor() &&
+    if (columnSize[c]==0 && waste.back().getRank()=="K") {
+        columnSize[c]++;
+        tableau[c][columnSize[c]]=waste.back();
+        waste.pop_back();
+        player.setScore(player.getScore()+80);
+        return true;
+    };
+    if (strcmp(waste.back().getColor(),tableau[c][columnSize[c]].getColor())!=0 &&
         waste.back().getIndexOrder()+1==tableau[c][columnSize[c]].getIndexOrder()) {
         columnSize[c]++;
         tableau[c][columnSize[c]]=waste.back();
         waste.pop_back();
-        noCardsFaceUp++;
+        player.setScore(player.getScore()+80);
         return true;
     }
     return false;
 }
 bool Game::moveFoundationToColumn(int f,int c) {
+    if (c<1 || c>7 || f<1 || f>4) return false;
     if (foundationSize[f]==0) return false;
     if (columnSize[c]==0 && foundation[f][foundationSize[f]].getRank()!="K") return false;
-    if (foundation[f][foundationSize[f]].getColor()!=tableau[c][columnSize[c]].getColor() &&
+    if (strcmp(foundation[f][foundationSize[f]].getColor(),tableau[c][columnSize[c]].getColor())!=0 &&
         foundation[f][foundationSize[f]].getIndexOrder()+1==tableau[c][columnSize[c]].getIndexOrder() ) {
         columnSize[c]++;
         tableau[c][columnSize[c]]=foundation[f][foundationSize[f]];
         foundationSize[f]--;
+        player.setScore(player.getScore()+120);
         return true;
     }
     return false;
 }
+bool Game::finish() {
+    int cnt=0;
+    for (int i=1;i<=4;i++) {
+        cnt+=foundationSize[i];
+    }
+    if (cnt==52)return true;
+    return false;
+}
+void Game::reset() {
+    Card a;
+    for(int i=1;i<=4;i++) {
+        foundationSize[i]=0;
+        foundation[i][0]=a;
+    }
+    waste.clear();
+    waste.push_back(a);
+    pile.clear();
+    pile.push_back(a);
 
+    Deck deck(52);
+    deck.shuffleDeck(deck);
+    for (int i = 1; i <= 7; i++) {
+        columnSize[i] = i;
+        tableau[i][0] = a;
+        for (int j = 1; j <= i; j++) {
+            tableau[i][j] = deck.Draw();
+            if (j == i) tableau[i][j].setIsFaceUp(true);
+            else tableau[i][j].setIsFaceUp(false);
+        }
+    }
+
+    while (deck.isEmpty(deck)!=0) {
+        pile.push_back(deck.Draw());
+    }
+    player.setScore(0);
+
+}
 class Menu {
-    Game solitair;
+    Game solitaire;
     Player player;
+public:
+    Menu()=default;
+    void run();
+    void gameMenu();
 };
+void Menu::run() {
+    while (true) {
+        SetConsoleOutputCP(CP_UTF8);
+        HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+        SetConsoleTextAttribute(hConsole, 12);
+        cout<<"\u2660 \u2663 \u2665 \u2666 SOLITAIRE \u2660 \u2663 \u2665 \u2666"<<endl;
+        SetConsoleTextAttribute(hConsole, 7);
+        cout<<"1 - rules\n";
+        cout<<"2 - start the game\n";
+        cout<<"0 - exit\n";
+        cout<<"Option: ";
+
+        int option;
+        cin>>option;
+        cin.ignore();
+
+        switch (option) {
+            case 0:
+                cout<<"byeee! \u2663 \n";
+                return;
+            case 1:
+                cout<<"Here are the rules for solitaire:\nClassic Solitaire (Klondike) involves arranging a 52-card deck into four foundation piles by suit (Ace to King) using a seven-column tableau. Build tableau columns down by alternating colors (e.g., red 6 on black 7), move Aces to foundations immediately, and fill empty spaces only with Kings.\n In this Solitaire, in console, you will have 6 options of moving the cards:\n- from waste to column\n- from waste to foundation\n- from foundation to column\n- from column to foundation\n- from column to column\n- multiple from one column to another.\nThis will be possible by writing , for example, when moving column to column, <1 2>, which will move the last card from the first column to the end of the second, if the card fits.\n\n"<<endl;
+                break;
+            case 2: {
+                solitaire.reset();
+                Player gamer;
+                cin>>gamer;
+                solitaire.setPlayer(gamer);
+                cout<<"ready?"<<endl;
+                cout<<"START"<<"\n\n";
+                gameMenu();
+                break;
+            }
+            default:
+                cout<<"Invalid option"<<endl;
+        }
+    }
+}
+void Menu::gameMenu() {
+    while (true) {
+        cout<<solitaire<<"\n";
+        cout<<"1 - Extract card from stock\n";
+        cout<<"2 - Move from column to column\n";
+        cout<<"3 - Move a card from waste to a column\n";
+        cout<<"4 - Move a card from waste to a foundation\n";
+        cout<<"5 - Move a card from a foundation to a column\n";
+        cout<<"6 - Move a card from a column to a foundation\n";
+        cout<<"7 - Move multiple cards from a column to another\n";
+        cout<<"8 - Switch waste pile with stock pile (when stock is empty)\n";
+        cout<<"0 - Exit\n";
+        cout<<"Option: ";
+        int option;
+        cin>>option;
+        cin.ignore();
+        switch (option) {
+            case 0:
+                return;
+            case 1: {
+                HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+                SetConsoleTextAttribute(hConsole, 12);
+                if (solitaire.extractCard()==false) cout<<"NO MORE CARDS IN THE STOCK PILE, TRY SWITCHING IT WITH THE WASTE PILE\n";
+                SetConsoleTextAttribute(hConsole, 7);
+                cout<<"\n";
+                break;
+            }
+            case 2: {
+                HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+                SetConsoleTextAttribute(hConsole, 14);
+                cout<<"Write <x y>, x and y from 1 to 7, where x is which column to take the card from, and y is in which column do you want to put it\n";
+                cout<<"Move: ";
+                int a,c;
+                cin>>a>>c;
+                SetConsoleTextAttribute(hConsole, 12);
+                if (solitaire.moveColumnToColumn(a,c)==false) cout<<"THIS IS NOT A PROPER CARD\n";
+                SetConsoleTextAttribute(hConsole, 7);
+                cout<<"\n";
+                break;
+            }
+            case 3: {
+                HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+                SetConsoleTextAttribute(hConsole, 14);
+                cout<<"Write <x>, from 1 to 7, where x is which column ,from left to right, where you want the card to go\n";
+                cout<<"Move: ";
+                int c;
+                cin>>c;
+                SetConsoleTextAttribute(hConsole, 12);
+                if (solitaire.moveWasteToColumn(c)==false) cout<<"THIS IS NOT A PROPER CARD\n";
+                SetConsoleTextAttribute(hConsole, 7);
+                cout<<"\n";
+                break;
+            }
+            case 4: {
+                HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+                SetConsoleTextAttribute(hConsole, 14);
+                cout<<"Write <x>, from 1 to 4, where x is which foundation, from left to right, where you want the card to go\n";
+                cout<<"Move: ";
+                int f;
+                cin>>f;
+                SetConsoleTextAttribute(hConsole, 12);
+                if(solitaire.moveWasteToFoundation(f)==false) cout<<"THIS IS NOT A PROPER CARD\n";
+                SetConsoleTextAttribute(hConsole, 7);
+                cout<<"\n";
+                break;
+            }
+            case 5: {
+                HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+                SetConsoleTextAttribute(hConsole, 14);
+                cout<<"write <x y>, x from 1 to 4, y from 1 to 7, where x is which foundation to take the card from, and y is in which column do you want to put it\n";
+                cout<<"Move: ";
+                int f,c;
+                cin>>f>>c;
+                SetConsoleTextAttribute(hConsole, 12);
+                if (solitaire.moveFoundationToColumn(f,c)==false) cout<<"THIS IS NOT A PROPER CARD\n";
+                SetConsoleTextAttribute(hConsole, 7);
+                cout<<"\n";
+                break;
+            }
+            case 6: {
+                HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+                SetConsoleTextAttribute(hConsole, 14);
+                cout<<"Write <x y>, x from 1 to 7, y from 1 to 4, where x is which column to take the card from, and y is in which foundation do you want to put it\n";
+                cout<<"Move: ";
+                int c,f;
+                cin>>c>>f;
+                SetConsoleTextAttribute(hConsole, 12);
+                if (solitaire.moveCardToFoundation(c,f)==false) cout<<"THIS IS NOT A PROPER CARD\n";
+                SetConsoleTextAttribute(hConsole, 7);
+                cout<<"\n";
+                break;
+            }
+            case 7: {
+                HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+                SetConsoleTextAttribute(hConsole, 14);
+                cout<<"write <x y z>, x and z from 1 to 7, where x is the column you want to take the cards from, y is what index the first card is on (counting from top to bottom, starting with 1), and z the column in which to put them\n";
+                cout<<"Move: ";
+                int a,i,c;
+                cin>>a>>i>>c;
+                SetConsoleTextAttribute(hConsole, 12);
+                if (solitaire.moveMoreCards(a,i,c)==false) cout<<"THIS IS NOT A PROPER CARD\n";
+                SetConsoleTextAttribute(hConsole, 7);
+                cout<<"\n";
+                break;
+            }
+            case 8: {
+                solitaire.reversePiles();
+                break;
+            }
+            default:
+                cout<<"invalid option\n";
+        }
+        if (solitaire.finish()==true) {
+            HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+            SetConsoleOutputCP(CP_UTF8);
+            SetConsoleTextAttribute(hConsole, 13);
+            cout<<"\u2666\u2666 YOU WON CONGRATULATIONS!! \u2666\u2666"<<"\n\n";
+            SetConsoleTextAttribute(hConsole, 7);
+            break;
+        }
+    }
+}
 int main() {
-    Card a("\u2665","K","R",true),b("\u2660","Q","B",true);
-    Card c=b;
-    Deck d(36),f(52);
-    d.shuffleDeck(d);
-    //cout<<d;
-    Game g;
-    cout<<g;
-    Player one;
-    cin>>one;
+    Menu one;
+    one.run();
 };
