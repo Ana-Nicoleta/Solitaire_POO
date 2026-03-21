@@ -5,6 +5,134 @@
 #include <windows.h>
 #include <random>
 using namespace std;
+
+class Player{
+    const int id;
+    string name;
+    static double noPlayerCreated;
+    int timesPlayed;
+    int* scores;
+    float average;
+    void copyScores(int timesPlayed, int* scores);
+public:
+    Player();
+    Player(string,int,int*,float);
+    ~Player();
+    Player(const Player& obj);
+    Player& operator=(const Player& obj);
+    friend std::ostream& operator<<(std::ostream& out, const Player& obj);
+    friend std::istream& operator>>(std::istream& in, Player& obj);
+    int getID() const;
+    string getName() const;
+    double getNoPlayersCreated() const;
+    int getTimesPlayed() const;
+    const int* getScores() const;
+    float getAverage() const;
+    void setName(string);
+    void setAverage(float);
+    void setScores(int*, int);
+    float calcAverage(int*, int);
+};
+double Player::noPlayerCreated=1;
+
+void Player::copyScores(int timesPlayed, int* scores) {
+    this->timesPlayed = timesPlayed;
+    if (timesPlayed > 0) {
+        this->scores = new int[timesPlayed];
+        for (int i = 0; i < timesPlayed; i++)
+            this->scores[i] = scores[i];
+    } else {
+        this->scores = nullptr;
+    }
+}
+Player::Player():id(noPlayerCreated++) {
+    name="N/A";
+    timesPlayed=0;
+    scores=nullptr;
+    average=0.0;
+}
+Player::Player(string name, int timesPlayed, int* scores, float average):id(noPlayerCreated++) {
+    this->name=name;
+    copyScores(timesPlayed, scores);
+    this->average=average;
+}
+Player::Player(const Player& obj):id(noPlayerCreated++) {
+    name=obj.name;
+    copyScores(obj.timesPlayed, obj.scores);
+    average=obj.average;
+}
+Player::~Player() {
+    delete[] scores;
+}
+Player& Player::operator=(const Player& obj) {
+    if (this==&obj) return *this;
+    name=obj.name;
+    average=obj.average;
+    delete[] scores;
+    copyScores(obj.timesPlayed, obj.scores);
+    return *this;
+};
+string Player::getName()const {
+    return name;
+}
+int Player::getTimesPlayed() const {
+    return timesPlayed;
+}
+float Player::getAverage() const {
+    return average;
+}
+const int* Player::getScores() const {
+    return scores;
+}
+int Player::getID() const {
+    return id;
+}
+double Player::getNoPlayersCreated() const {
+    return noPlayerCreated;
+}
+
+void Player::setName(string name) {
+    this->name=name;
+}
+void Player::setAverage(float average) {
+    this->average=average;
+}
+void Player::setScores(int* scores, int timesPlayed) {
+    delete[] this->scores;
+    copyScores(timesPlayed, scores);
+}
+std::istream& operator>>(std::istream& in, Player& obj) {
+    cout<<"Enter player name: "<<endl;
+    string name;
+    in>>name;
+    obj.setName(name);
+    return in;
+}
+std::ostream& operator<<(std::ostream& out, const Player& obj) {
+    out<<"Player name: "<<obj.name<<endl;
+    out<<"Player ID: "<<obj.id<<endl;
+    if (obj.scores!=nullptr) {
+        out << "Number of times played: " << obj.timesPlayed <<endl;
+        out<<"Scores: ";
+        for (int i = 0; i < obj.timesPlayed; i++)
+            out << obj.scores[i] << " ";
+        out << '\n';
+    } else {
+        out << "Never played\n";
+    }
+    return out;
+}
+float Player::calcAverage(int* scores, int timesPlayed) {
+    float average=0;
+    if (scores!=nullptr) {
+        for (int i=0;i<timesPlayed;i++) {
+            average=average+scores[i];
+        }
+        average= average/timesPlayed;
+        return average;
+    }
+    return 0;
+}
 class Card {
     const int id;
     static double noCardsCreated;
@@ -28,12 +156,6 @@ public:
     int getIndexOrder() const;
 };
 
-/*class Player {
-    const double id;
-    string name;
-    int* maxScore;
-    float average;
-};*/
 double Card::noCardsCreated=0;
 Card::Card( string symbol,string rank,char* color, bool isFaceUp):id(++noCardsCreated),order({"A","2","3","4","5","6","7","8","9","10","J","Q","K"}){
     this->isFaceUp=isFaceUp;
@@ -404,6 +526,10 @@ bool Game::moveFoundationToColumn(int f,int c) {
     return false;
 }
 
+class Menu {
+    Game solitair;
+    Player player;
+};
 int main() {
     Card a("\u2665","K","R",true),b("\u2660","Q","B",true);
     Card c=b;
@@ -412,4 +538,6 @@ int main() {
     //cout<<d;
     Game g;
     cout<<g;
+    Player one;
+    cin>>one;
 };
