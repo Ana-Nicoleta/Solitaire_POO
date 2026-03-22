@@ -34,8 +34,9 @@ public:
     void setName(string);
     void setAverage(float);
     void setScores(int*, int);
+    void setNewScore(long score);
     void setScore(long score);
-    float calcAverage(int*, int);
+    float calcAverage(const int*, int);
 };
 long Player::noPlayerCreated=1;
 
@@ -111,6 +112,10 @@ void Player::setScores(int* scores, int timesPlayed) {
     delete[] this->scores;
     copyScores(timesPlayed, scores);
 }
+void Player::setNewScore(long score) {
+    this->scores[++this->timesPlayed]=score;
+}
+
 void Player::setScore(long score) {
     this->score=score;
 }
@@ -119,6 +124,16 @@ std::istream& operator>>(std::istream& in, Player& obj) {
     string name;
     in>>name;
     obj.setName(name);
+    cout<<"How many times have you played: ";
+    int timesPlayed;
+    cin>>timesPlayed;
+    cout<<"Your previous scores: ";
+    int* scores=new int[timesPlayed];
+    for (int i=0;i<timesPlayed;i++) {
+        cin>>scores[i];
+    }
+    obj.setScores(scores,timesPlayed);
+    delete[] scores;
     return in;
 }
 std::ostream& operator<<(std::ostream& out, const Player& obj) {
@@ -135,7 +150,7 @@ std::ostream& operator<<(std::ostream& out, const Player& obj) {
     }
     return out;
 }
-float Player::calcAverage(int* scores, int timesPlayed) {
+float Player::calcAverage(const int* scores, int timesPlayed) {
     float average=0;
     if (scores!=nullptr) {
         for (int i=0;i<timesPlayed;i++) {
@@ -365,6 +380,9 @@ public:
     bool moveWasteToColumn(int );
     bool moveFoundationToColumn(int ,int );
     void setPlayer(Player) ;
+    void setScorePlayer(long score);
+    float getAverageGame() const;
+    Player getPlayer() const;
     bool finish();
     void reset() ;
 
@@ -606,6 +624,18 @@ void Game::reset() {
     player.setScore(0);
 
 }
+void Game::setScorePlayer(long score) {
+    this->player.setNewScore(score);
+    this->player.setAverage(this->player.calcAverage(this->player.getScores(),this->player.getTimesPlayed()));
+}
+
+float Game::getAverageGame() const {
+    return player.getAverage();
+}
+Player Game::getPlayer()const {
+    return player;
+}
+
 class Menu {
     Game solitaire;
     Player player;
@@ -768,8 +798,13 @@ void Menu::gameMenu() {
             HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
             SetConsoleOutputCP(CP_UTF8);
             SetConsoleTextAttribute(hConsole, 13);
-            cout<<"\u2666\u2666 YOU WON CONGRATULATIONS!! \u2666\u2666"<<"\n\n";
+            cout<<"\u2666\u2666 YOU WON CONGRATULATIONS!! \u2666\u2666"<<"\n";
             SetConsoleTextAttribute(hConsole, 7);
+            cout<<"Your score is: "<<solitaire.getPlayer().getScore()<<endl;
+            solitaire.setScorePlayer(solitaire.getPlayer().getScore());
+            cout<<"Your average is:"<<solitaire.getAverageGame()<<endl;
+            cout<<"\n\n";
+
             break;
         }
     }
